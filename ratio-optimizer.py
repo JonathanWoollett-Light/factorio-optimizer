@@ -104,10 +104,11 @@ optimizer = torch.optim.Adam([multiples])
 
 # Sets the required amounts
 required = torch.zeros(len(items))
-print(f"item: {sys.argv[1]}")
-required[item_index_dict[sys.argv[1]]] = 1
+if len(sys.argv) > 2:
+    print(f"item: {sys.argv[1]}")
+    required[item_index_dict[sys.argv[1]]] = 1
 
-ITERATIONS = 10000
+ITERATIONS = 1000000
 UPDATE = 1000
 loop = tqdm(range(ITERATIONS))
 for i in loop:
