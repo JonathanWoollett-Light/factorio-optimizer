@@ -12,3 +12,8 @@ Lets do [Factorio Calculator](http://kirkmcdonald.github.io/calc.html) but make 
 ## What does this do?
 
 The same thing as factorio calculator, but in a generalized form that can be applied to any number of recipes/mods.
+
+## Why this approach?
+
+1. We can't calculate total derivatives so that shuts off *solving* it, we can only optimize it.
+2. Since we can calculate partial derivatives and we have a relatively high dimensionality (the number of recipes, in base game 160) gradient descent allows for more intelligent optimization than an approach like bayesian optimization.
