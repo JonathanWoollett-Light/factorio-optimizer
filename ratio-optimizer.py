@@ -92,10 +92,10 @@ def search_depth(item, covered, recipes, depth=0):
 
 
 # The depths of each item (how far each item is from raw resources).
-item_depths = 100 * torch.tensor(
-    [search_depth(item, [False for _ in recipes], recipes) for item in items]
-)
+item_depths = torch.tensor([search_depth(item, [False for _ in recipes], recipes) for item in items])
 print(f"item_depths: {item_depths}")
+item_depths = 20 * torch.square(item_depths)
+print(f"item_depths (adjusted): {item_depths}")
 
 # The amount of each recipe we produce.
 multiples = torch.randn(len(recipes), requires_grad=True)
@@ -108,6 +108,7 @@ if len(sys.argv) > 2:
     print(f"item: {sys.argv[1]}")
     required[item_index_dict[sys.argv[1]]] = 1
 
+print("Optimizing ratio")
 ITERATIONS = 1000000
 UPDATE = 1000
 loop = tqdm(range(ITERATIONS))
@@ -124,6 +125,19 @@ for i in loop:
     if i % UPDATE == 0:
         loop.set_postfix(loss=loss.item())
 
-for i, m in enumerate(multiples):
-    if m >= 0.01:
-        print(f"{math.floor(100*m)/100}\t{recipes[i]}")
+# We go through all recipes finding best combination (which most evenly fits)
+print("Finding multiple")
+MULTIPLE_ITERATIONS = 300
+min_multiple = 1
+min_remainder = torch.sum(torch.remainder(min_multiple*multiples,1))
+for m in range(2,MULTIPLE_ITERATIONS):
+    remainder = torch.sum(torch.remainder(m*multiples,1))
+    if remainder < min_remainder:
+        min_multiple = m
+        min_remainder = remainder
+print(f"Multiplier: {min_multiple}, Remainder: {min_remainder}")
+
+final_num_recipes = torch.floor(min_multiple*multiples)
+for i, m in enumerate(final_num_recipes):
+    if m > 0:
+        print(f"{m}\t{recipes[i]}")
