@@ -3,6 +3,7 @@ from tqdm import tqdm
 import json
 import math
 import sys
+import matplotlib.pyplot as plt
 
 LOAD = False
 
@@ -63,11 +64,10 @@ print(f"len(recipes): {len(recipes)}")
 recipe_balances = torch.stack([to_balance_array(r, item_index_dict) for r in recipes])
 print(f"recipe_balances.shape: {recipe_balances.shape}")
 
-# We use these depths to weight our network in favor of requiring possibly more but lower level inputs.
-# In affect we can calculate depths by simply counting the maximum number of steps required to reach a raw resource.
+# We use these depths to weight our network in favor of requiring lower level inputs.
+# We can approximately calculate the depth of an item by counting the maximum number of steps required to reach a raw resource.
 def search_depth(item, covered, recipes, depth=0):
     # print(f"item: {item}")
-
     # Safety check.
     if depth > 15:
         return 0
@@ -102,6 +102,8 @@ if not LOAD:
     multiples = torch.randn(len(recipes), requires_grad=True)
     # The optimizer we use.
     optimizer = torch.optim.Adam([multiples])
+    # The learning rate scheduler.
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,patience=2,threshold=1e2)
 
     # Sets the required amounts
     required = torch.zeros(len(items))
@@ -110,30 +112,47 @@ if not LOAD:
         required[item_index_dict[sys.argv[1]]] = 1
 
     print("Optimizing ratio")
-    ITERATIONS = 1000000
+    EPOCHS = 100
+    ITERATIONS = 500000
     UPDATE = 1000
+    losses = []
+    # for epoch in range(EPOCHS):
+        # print(f"Epoch {epoch}")
     loop = tqdm(range(ITERATIONS))
     for i in loop:
+        optimizer.zero_grad()
         # Forward
         y_pred = torch.matmul(multiples, recipe_balances)
         loss = loss_fn(required, y_pred, multiples, item_depths)
 
         # Backward
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         if i % UPDATE == 0:
             loop.set_postfix(loss=loss.item())
-
-    
+            losses.append(loss.item())
+        # scheduler.step(loss)
     torch.save(multiples,"./multiples.pt")
+
+    plt.plot(losses) #plot the data
+    # plt.xticks(range(0,len(data)+1, 1))
+    plt.ylabel('Loss') #set the label for y axis
+    plt.yscale('log')
+    plt.xlabel('Iteration') #set the label for x-axis
+    plt.title("Loss Vs Iteration") #set the title of the graph
+    plt.show() #display the graph
+
 multiples = torch.load("./multiples.pt")
 print(f"multiples: {multiples}")
 
+# Overview
+print("\n")
+for i, m in enumerate(multiples):
+    print(f"{m:.6f}\t{recipes[i]}")
+
 # We go through all recipes finding best combination (which most evenly fits)
 # print("Finding multiple")
-
 # with torch.no_grad():
 #     if len(sys.argv) > 1:
 #         item = sys.argv[1]
@@ -146,7 +165,5 @@ print(f"multiples: {multiples}")
 #     amounts = multiples * prod
 #     print(f"amounts: {amounts}")
 
-final_num_recipes = torch.floor(multiples*1000)
-for i, m in enumerate(final_num_recipes):
-    if m > 0:
-        print(f"{m}\t{recipes[i]}")
+
+        
