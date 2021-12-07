@@ -1,6 +1,6 @@
 # factorio-optimizer
 
-Lets do [Factorio Calculator](http://kirkmcdonald.github.io/calc.html) but make it optimize.
+An attempt at [Factorio Calculator](http://kirkmcdonald.github.io/calc.html) but generalized.
 
 ## Why not use Factorio Calculator?
 
