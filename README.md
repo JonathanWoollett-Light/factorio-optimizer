@@ -8,6 +8,25 @@ Currently the optimization seems to get stuck, not sure how to fix this, any hel
 
 ![Loss Vs Iteration](https://github.com/JonathanWoollett-Light/factorio-optimizer/blob/main/loss-graph.png?raw=true)
 
+```python
+def loss_fn(required, resources, recipes, item_depths):
+    # Remaining resources after extracting the required resources.
+    remaining = resources - required
+    # The deeper (more complex) resources are weighted more heavily (meaning we want to optimize to have a lower over/under flow of these variables).
+    depth_weight = item_depths * remaining
+    # Penalize by resource usage slightly, penalize by negative resources usage heavily (we would rather produced unused resources than require external resources).
+    negative_item_loss = 100 * torch.sum(torch.abs((depth_weight < 0) * depth_weight))
+    positive_item_loss = 10 * torch.sum((depth_weight > 0) * depth_weight)
+    item_loss = negative_item_loss + positive_item_loss
+    # Penalize by number of recipes slightly, use abs to push negative or positive to same(as this is impossible).
+    negative_recipe_loss = 1000 * torch.sum(torch.abs((recipes < 0) * recipes))
+    positive_recipe_loss = torch.sum((recipes > 0) * recipes)
+    recipe_loss = negative_recipe_loss + positive_recipe_loss
+
+    loss = item_loss + recipe_loss
+    return (loss,item_loss,recipe_loss,negative_item_loss,positive_item_loss,negative_recipe_loss,positive_recipe_loss)
+```
+
 ## Why not use Factorio Calculator?
 
 - Becuase factorio calculator is not general. 
