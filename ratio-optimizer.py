@@ -29,6 +29,7 @@ def to_balance_array(recipe, item_index_dict):
         inputs[item_index_dict[item]] = amount
     return outputs - inputs
 
+
 # required: Resources desired out.
 # resources: Resource balance in/out of network (negative being resources in, positive being resources out).
 # recipes: Number of recipes performed.
@@ -48,7 +49,15 @@ def loss_fn(required, resources, recipes, item_depths):
     recipe_loss = negative_recipe_loss + positive_recipe_loss
 
     loss = item_loss + recipe_loss
-    return (loss,item_loss,recipe_loss,negative_item_loss,positive_item_loss,negative_recipe_loss,positive_recipe_loss)
+    return (
+        loss,
+        item_loss,
+        recipe_loss,
+        negative_item_loss,
+        positive_item_loss,
+        negative_recipe_loss,
+        positive_recipe_loss,
+    )
 
 
 # Loads items
@@ -93,11 +102,14 @@ def search_depth(item, covered, recipes, depth=0):
 
     return max_depth
 
+
 if not LOAD:
     # The depths of each item (how far each item is from raw resources).
-    item_depths = torch.tensor([search_depth(item, [False for _ in recipes], recipes) for item in items])
+    item_depths = torch.tensor(
+        [search_depth(item, [False for _ in recipes], recipes) for item in items]
+    )
     # print(f"item_depths: {item_depths}")
-    item_depths = 100 * torch.pow(item_depths,1)
+    item_depths = 100 * torch.pow(item_depths, 1)
     print(f"item_depths (adjusted): {item_depths}")
 
     # The amount of each recipe we produce.
@@ -119,13 +131,15 @@ if not LOAD:
     UPDATE = 1000
     losses = []
     # for epoch in range(EPOCHS):
-        # print(f"Epoch {epoch}")
+    # print(f"Epoch {epoch}")
     loop = tqdm(range(ITERATIONS))
     for i in loop:
         optimizer.zero_grad()
         # Forward
         y_pred = torch.matmul(multiples, recipe_balances)
-        loss,il,rl,nil,pil,nrl,prl = loss_fn(required, y_pred, multiples, item_depths)
+        loss, il, rl, nil, pil, nrl, prl = loss_fn(
+            required, y_pred, multiples, item_depths
+        )
 
         # Backward
         loss.backward()
@@ -133,24 +147,34 @@ if not LOAD:
 
         if i % UPDATE == 0:
             loop.set_postfix(loss=loss.item())
-            losses.append([loss.item(),il.item(),rl.item(),nil.item(),pil.item(),nrl.item(),prl.item()])
+            losses.append(
+                [
+                    loss.item(),
+                    il.item(),
+                    rl.item(),
+                    nil.item(),
+                    pil.item(),
+                    nrl.item(),
+                    prl.item(),
+                ]
+            )
         # scheduler.step(loss)
-    torch.save(multiples,"./multiples.pt")
+    torch.save(multiples, "./multiples.pt")
 
-    r = range(0,ITERATIONS,UPDATE)
-    plt.plot(r,[l[6] for l in losses],label="Positive Recipe Loss")
-    plt.plot(r,[l[5] for l in losses],label="Negative Recipe Loss")
-    plt.plot(r,[l[4] for l in losses],label="Positive Item Loss")
-    plt.plot(r,[l[3] for l in losses],label="Negative Item Loss")
-    plt.plot(r,[l[2] for l in losses],label="Recipe Loss")
-    plt.plot(r,[l[1] for l in losses],label="Item Loss")
-    plt.plot(r,[l[0] for l in losses],label="Loss")
+    r = range(0, ITERATIONS, UPDATE)
+    plt.plot(r, [l[6] for l in losses], label="Positive Recipe Loss")
+    plt.plot(r, [l[5] for l in losses], label="Negative Recipe Loss")
+    plt.plot(r, [l[4] for l in losses], label="Positive Item Loss")
+    plt.plot(r, [l[3] for l in losses], label="Negative Item Loss")
+    plt.plot(r, [l[2] for l in losses], label="Recipe Loss")
+    plt.plot(r, [l[1] for l in losses], label="Item Loss")
+    plt.plot(r, [l[0] for l in losses], label="Loss")
 
-    plt.yscale('log')
-    plt.xlabel('Iteration')
+    plt.yscale("log")
+    plt.xlabel("Iteration")
     plt.title("Loss' Vs Iteration")
     plt.legend()
-    plt.show() #display the graph
+    plt.show()  # display the graph
 
 multiples = torch.load("./multiples.pt")
 print(f"multiples: {multiples}")
@@ -169,10 +193,7 @@ for i, m in enumerate(multiples):
 #             for i,a in r.inputs
 #         index = item_index_dict[sys.argv[1]]
 #         print(f"prod = 1 / {multiples[index]}")
-#         prod = 1 / multiples[index] 
+#         prod = 1 / multiples[index]
 #     print(f"prod: {prod}")
 #     amounts = multiples * prod
 #     print(f"amounts: {amounts}")
-
-
-        
