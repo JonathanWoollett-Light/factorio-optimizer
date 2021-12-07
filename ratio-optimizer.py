@@ -39,14 +39,16 @@ def loss_fn(required, resources, recipes, item_depths):
     # The deeper (more complex) resources are weighted more heavily (meaning we want to optimize to have a lower over/under flow of these variables).
     depth_weight = item_depths * remaining
     # Penalize by resource usage slightly, penalize by negative resources usage heavily (we would rather produced unused resources than require external resources).
-    item_loss = 10 * torch.sum((depth_weight > 0) * depth_weight) + 100 * torch.sum(
-        torch.abs((depth_weight < 0) * depth_weight)
-    )
+    negative_item_loss = 100 * torch.sum(torch.abs((depth_weight < 0) * depth_weight))
+    positive_item_loss = 10 * torch.sum((depth_weight > 0) * depth_weight)
+    item_loss = negative_item_loss + positive_item_loss
     # Penalize by number of recipes slightly, use abs to push negative or positive to same(as this is impossible).
-    recipe_loss = torch.sum((recipes > 0) * recipes) + 1000 * torch.sum(
-        torch.abs((recipes < 0) * recipes)
-    )
-    return item_loss + recipe_loss
+    negative_recipe_loss = 1000 * torch.sum(torch.abs((recipes < 0) * recipes))
+    positive_recipe_loss = torch.sum((recipes > 0) * recipes)
+    recipe_loss = negative_recipe_loss + positive_recipe_loss
+
+    loss = item_loss + recipe_loss
+    return (loss,item_loss,recipe_loss,negative_item_loss,positive_item_loss,negative_recipe_loss,positive_recipe_loss)
 
 
 # Loads items
@@ -112,7 +114,7 @@ if not LOAD:
         required[item_index_dict[sys.argv[1]]] = 1
 
     print("Optimizing ratio")
-    EPOCHS = 100
+    # EPOCHS = 100
     ITERATIONS = 500000
     UPDATE = 1000
     losses = []
@@ -123,7 +125,7 @@ if not LOAD:
         optimizer.zero_grad()
         # Forward
         y_pred = torch.matmul(multiples, recipe_balances)
-        loss = loss_fn(required, y_pred, multiples, item_depths)
+        loss,il,rl,nil,pil,nrl,prl = loss_fn(required, y_pred, multiples, item_depths)
 
         # Backward
         loss.backward()
@@ -131,16 +133,23 @@ if not LOAD:
 
         if i % UPDATE == 0:
             loop.set_postfix(loss=loss.item())
-            losses.append(loss.item())
+            losses.append([loss.item(),il.item(),rl.item(),nil.item(),pil.item(),nrl.item(),prl.item()])
         # scheduler.step(loss)
     torch.save(multiples,"./multiples.pt")
 
-    plt.plot(losses) #plot the data
-    # plt.xticks(range(0,len(data)+1, 1))
-    plt.ylabel('Loss') #set the label for y axis
+    r = range(0,ITERATIONS,UPDATE)
+    plt.plot(r,[l[6] for l in losses],label="Positive Recipe Loss")
+    plt.plot(r,[l[5] for l in losses],label="Negative Recipe Loss")
+    plt.plot(r,[l[4] for l in losses],label="Positive Item Loss")
+    plt.plot(r,[l[3] for l in losses],label="Negative Item Loss")
+    plt.plot(r,[l[2] for l in losses],label="Recipe Loss")
+    plt.plot(r,[l[1] for l in losses],label="Item Loss")
+    plt.plot(r,[l[0] for l in losses],label="Loss")
+
     plt.yscale('log')
-    plt.xlabel('Iteration') #set the label for x-axis
-    plt.title("Loss Vs Iteration") #set the title of the graph
+    plt.xlabel('Iteration')
+    plt.title("Loss' Vs Iteration")
+    plt.legend()
     plt.show() #display the graph
 
 multiples = torch.load("./multiples.pt")
