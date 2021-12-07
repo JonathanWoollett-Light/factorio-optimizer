@@ -2,6 +2,12 @@
 
 An attempt at [Factorio Calculator](http://kirkmcdonald.github.io/calc.html) but generalized.
 
+## WIP
+
+Currently the optimization seems to get stuck, not sure how to fix this, any help would be greatly appreciated.
+
+![Loss Vs Iteration](https://github.com/JonathanWoollett-Light/factorio-optimizer/blob/main/loss-graph.png?raw=true)
+
 ## Why not use Factorio Calculator?
 
 - Becuase factorio calculator is not general. 
