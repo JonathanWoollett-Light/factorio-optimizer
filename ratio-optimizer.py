@@ -12,8 +12,8 @@ LOAD = False
 #  until the requires recipes are integer values.
 
 # Example inputs
-# - `python3 ratio-optimizer.py space-science-pack`
-# - `python3 ratio-optimizer.py iron-gear-wheel`
+# - `python ratio-optimizer.py space-science-pack`
+# - `python ratio-optimizer.py iron-gear-wheel`
 
 # Given a recipe, return the balance of resources it uses/produces (positive being resources it produce, negative being resources it requires).
 def to_balance_array(recipe, item_index_dict):
@@ -29,7 +29,6 @@ def to_balance_array(recipe, item_index_dict):
         inputs[item_index_dict[item]] = amount
     return outputs - inputs
 
-
 # required: Resources desired out.
 # resources: Resource balance in/out of network (negative being resources in, positive being resources out).
 # recipes: Number of recipes performed.
@@ -39,13 +38,13 @@ def loss_fn(required, resources, recipes, item_depths):
     remaining = resources - required
     # The deeper (more complex) resources are weighted more heavily (meaning we want to optimize to have a lower over/under flow of these variables).
     depth_weight = item_depths * remaining
-    # Penalize by resource usage slightly, penalize by negative resources usage heavily (we would rather produced unused resources than require external resources).
-    negative_item_loss = 100 * torch.sum(torch.abs((depth_weight < 0) * depth_weight))
-    positive_item_loss = 10 * torch.sum((depth_weight > 0) * depth_weight)
+    # Penalize by resource usage slightly, penalize by negative resources usage heavily (we would rather produce unused resources than require external resources).
+    negative_item_loss = 1 * torch.sum(torch.abs((depth_weight < 0) * depth_weight)) # 100*
+    positive_item_loss = 1 * torch.sum((depth_weight > 0) * depth_weight) # 10*
     item_loss = negative_item_loss + positive_item_loss
-    # Penalize by number of recipes slightly, use abs to push negative or positive to same(as this is impossible).
-    negative_recipe_loss = 1000 * torch.sum(torch.abs((recipes < 0) * recipes))
-    positive_recipe_loss = torch.sum((recipes > 0) * recipes)
+    # Penalize by number of recipes slightly, penalize by negative recipes heavily (as this is impossible).
+    negative_recipe_loss = 0 * torch.sum(torch.abs((recipes < 0) * recipes)) # 1000*
+    positive_recipe_loss = 0 * torch.sum((recipes > 0) * recipes) # 1*
     recipe_loss = negative_recipe_loss + positive_recipe_loss
 
     loss = item_loss + recipe_loss
@@ -59,11 +58,10 @@ def loss_fn(required, resources, recipes, item_depths):
         positive_recipe_loss,
     )
 
-
 # Loads items
 items_file = open("./base/items.json")
 items = json.load(items_file)
-print(f"len(items): {len(items)}")
+print(f"number of items: {len(items)}")
 item_index_dict = {}
 for index, item in enumerate(items):
     item_index_dict[item] = index
@@ -71,9 +69,9 @@ for index, item in enumerate(items):
 # Loads recipes
 recipes_file = open("./base/recipes.json")
 recipes = json.load(recipes_file)
-print(f"len(recipes): {len(recipes)}")
+print(f"number of recipes: {len(recipes)}")
 recipe_balances = torch.stack([to_balance_array(r, item_index_dict) for r in recipes])
-print(f"recipe_balances.shape: {recipe_balances.shape}")
+# print(f"recipe_balances.shape: {recipe_balances.shape}")
 
 # We use these depths to weight our network in favor of requiring lower level inputs.
 # We can approximately calculate the depth of an item by counting the maximum number of steps required to reach a raw resource.
@@ -177,12 +175,19 @@ if not LOAD:
     plt.show()  # display the graph
 
 multiples = torch.load("./multiples.pt")
-print(f"multiples: {multiples}")
+# print(f"multiples: {multiples}")
+# normalized_multiple = torch.nn.functional.normalize(multiples,dim=0)
 
 # Overview
-print("\n")
+print()
+print(f"Multiple  │ {'Recipe': <32}│ {'Inputs': <110} │ Outputs")
+print('─'*200)
 for i, m in enumerate(multiples):
-    print(f"{m:.6f}\t{recipes[i]}")
+    inputs = [f"{f'{x[1]}·' if x[1]!=1 else ''}{x[0]}" for x in recipes[i]['inputs']]
+    joined_inputs = ' + '.join(inputs)
+    outputs = [f"{f'{x[1]}·' if x[1]!=1 else ''}{x[0]}" for x in recipes[i]['outputs']]
+    joined_outputs = ' + '.join(outputs)
+    print(f"{m:+.6f} │ {recipes[i]['name']:.<32}│ {joined_inputs:.<110} │ {joined_outputs}")
 
 # We go through all recipes finding best combination (which most evenly fits)
 # print("Finding multiple")
